@@ -1,12 +1,12 @@
 import { Client, GatewayIntentBits } from "discord.js";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
-import http from "http"; // <--- 1. THÊM DÒNG NÀY
+import http from "http";
 
 dotenv.config();
 
 // ==========================================
-// UPTIME ROBOT SERVER (MỚI THÊM)
+// UPTIME ROBOT SERVER
 // ==========================================
 const PORT = process.env.PORT || 3000;
 
@@ -34,6 +34,7 @@ const genai = new GoogleGenAI({
 
 const conversations = {};
 
+// ==================== BAD WORD FILTER ====================
 const badWords = [
     "dm", "đm", "cặc", "lồn", "loz", "l0z",
     "vcl", "clm", "đụ", "đjt", "shit", "fuck",
@@ -45,10 +46,12 @@ function containsBadWords(text) {
     return badWords.some(w => t.includes(w));
 }
 
+// ==================== READY ====================
 client.on("ready", () => {
     console.log(`🔥 Bot đã online: ${client.user.tag}`);
 });
 
+// ==================== SPLIT ====================
 function splitMessage(text, maxLength = 2000) {
     const chunks = [];
     let start = 0;
@@ -59,19 +62,150 @@ function splitMessage(text, maxLength = 2000) {
     return chunks;
 }
 
+// =====================================================
+// MESSAGE HANDLER
+// =====================================================
 client.on("messageCreate", async(message) => {
     if (message.author.bot) return;
-
     const content = message.content.trim();
 
+    // ========== CHỬI BẬY ==========
     if (containsBadWords(content)) {
         await message.reply("⚠️ **Ê ông, hạn chế chửi thề trong nhóm nha. Giữ văn minh xíu.**");
         return;
     }
 
-    // ==========================
-    // /point - ngắn gọn
-    // ==========================
+    // =====================================================
+    // ✅ /examset – 5 bài theo buổi học
+    // =====================================================
+    if (content.startsWith("/examset")) {
+        const topic = content.replace("/examset", "").trim();
+
+        if (!topic) {
+            await message.reply("❌ Nhập buổi học phía sau. Ví dụ: `/examset Buổi 3 - con trỏ trong C`");
+            return;
+        }
+
+        const examPrompt = `
+Bạn là giảng viên đại học ngành CNTT.
+Hãy tạo 5 bài tập theo BUỔI HỌC sau:
+
+"""${topic}"""
+
+YÊU CẦU:
+- Sắp xếp từ dễ → khó
+- Mỗi bài: 
+  + Có tên bài
+  + Mô tả yêu cầu rõ ràng
+  + Đầu vào / đầu ra (nếu cần)
+- Ưu tiên bài tập thực hành code
+- Viết bằng tiếng Việt
+- Dùng Markdown
+
+FORMAT:
+**📚 BÀI TẬP THEO BUỔI: ${topic}**
+
+**Bài 1 (Dễ):**
+...
+
+**Bài 2:**
+...
+
+**Bài 3:**
+...
+
+**Bài 4:**
+...
+
+**Bài 5 (Khó):**
+...
+`;
+
+        try {
+            const response = await genai.models.generateContent({
+                model: "gemini-2.0-flash",
+                contents: examPrompt,
+                config: { temperature: 0.6 },
+            });
+
+            const answer = response.text || "Lỗi khi tạo đề 😭";
+            const chunks = splitMessage(answer);
+            for (const chunk of chunks) {
+                await message.channel.send(chunk);
+            }
+        } catch (err) {
+            console.error(err);
+            await message.channel.send("❌ Lỗi khi tạo bộ đề /examset");
+        }
+        return;
+    }
+
+    // =====================================================
+    // ✅ /homework – 5 bài theo chủ đề + ngôn ngữ
+    // =====================================================
+    if (content.startsWith("/homework")) {
+        const topic = content.replace("/homework", "").trim();
+
+        if (!topic) {
+            await message.reply("❌ Nhập chủ đề + ngôn ngữ. Ví dụ: `/homework array trong C`");
+            return;
+        }
+
+        const homeworkPrompt = `
+Bạn là giảng viên đại học ngành lập trình.
+Hãy tạo 5 bài tập về chủ đề sau:
+
+"""${topic}"""
+
+YÊU CẦU:
+- Thứ tự: Rất dễ → Trung bình → Khó → Nâng cao → Thử thách
+- Chỉ được viết ĐỀ BÀI (không hướng dẫn, không code mẫu)
+- Rõ ràng, đủ thông tin để sinh viên tự code
+- Ưu tiên bài toán thực tế
+- Viết bằng tiếng Việt
+- Markdown
+
+FORMAT:
+**📘 BÀI TẬP VỀ: ${topic}**
+
+**Bài 1 (Rất dễ):**
+...
+
+**Bài 2 (Dễ):**
+...
+
+**Bài 3 (Trung bình):**
+...
+
+**Bài 4 (Khó):**
+...
+
+**Bài 5 (Thử thách):**
+...
+`;
+
+        try {
+            const response = await genai.models.generateContent({
+                model: "gemini-2.0-flash",
+                contents: homeworkPrompt,
+                config: { temperature: 0.7 },
+            });
+
+            const answer = response.text || "Bot bị khùng 😭";
+            const chunks = splitMessage(answer);
+            for (const chunk of chunks) {
+                await message.channel.send(chunk);
+            }
+        } catch (err) {
+            console.error(err);
+            await message.channel.send("❌ Lỗi khi tạo bộ bài tập /homework");
+        }
+        return;
+    }
+
+    // =====================================================
+    // ✅ /point
+    // =====================================================
     if (content.startsWith("/point")) {
         const workText = content.replace("/point", "").trim();
         if (!workText) {
@@ -83,38 +217,41 @@ client.on("messageCreate", async(message) => {
 Bạn là giáo viên đại học, chấm điểm bài tập sinh viên.
 Bài làm: """${workText}"""
 Yêu cầu:
-- Chấm điểm theo thang 0-10.
-- Chỉ ra tối đa 2-3 sai sót chính, giải thích ngắn gọn, dễ hiểu.
-- Dùng Markdown để format output.
-- Format trả về:
+- Chấm điểm 0-10
+- Chỉ ra tối đa 3 lỗi
+- Ngắn gọn
+- Markdown
+
+FORMAT:
 **Điểm:** ...
 **Sai sót:**
 1️⃣ ...
 2️⃣ ...
+3️⃣ ...
 `;
 
         try {
             const response = await genai.models.generateContent({
-                model: "gemini-2.0-flash", // Lưu ý: Mình chỉnh về 2.0-flash cho ổn định vì 2.5 có thể chưa public rộng rãi tuỳ account
+                model: "gemini-2.0-flash",
                 contents: pointPrompt,
                 config: { temperature: 0.7 },
             });
 
-            let answer = response.text || "Bot lag sml rồi 😭";
+            const answer = response.text || "Bot lag sml rồi 😭";
             const chunks = splitMessage(answer);
             for (const chunk of chunks) {
                 await message.channel.send(chunk);
             }
         } catch (err) {
-            console.error("Gemini API Error:", err);
-            await message.channel.send("Bot lỗi khi chấm điểm, gọi cứu hộ 🚑");
+            console.error(err);
+            await message.channel.send("Bot lỗi khi chấm điểm 🚑");
         }
         return;
     }
 
-    // ==========================
-    // /feedback - chi tiết
-    // ==========================
+    // =====================================================
+    // ✅ /feedback – chi tiết
+    // =====================================================
     if (content.startsWith("/feedback")) {
         const workText = content.replace("/feedback", "").trim();
         if (!workText) {
@@ -125,22 +262,23 @@ Yêu cầu:
         const feedbackPrompt = `
 Bạn là giáo viên đại học, chấm điểm bài tập sinh viên.
 Bài làm: """${workText}"""
+
 Yêu cầu:
-- Chấm điểm theo thang 0-10.
-- Chỉ ra các sai sót, giải thích chi tiết và cách cải thiện từng lỗi.
-- Nêu điểm mạnh bài làm.
-- Sử dụng Markdown để in đậm tiêu đề (**Điểm**, **Sai sót**, **Điểm mạnh**).
-- Format:
+- Chấm theo thang 0-10
+- Chỉ rõ lỗi + cách sửa
+- Nêu điểm mạnh
+- Động viên cuối
+- Markdown
+
+FORMAT:
 **Điểm:** ...
 **Nhận xét tổng quát:** ...
 **Sai sót và cách cải thiện:**
 1️⃣ ...
 2️⃣ ...
-...
 **Điểm mạnh:**
 - ...
 - ...
-Kết thúc feedback: Động viên sinh viên học tốt.
 `;
 
         try {
@@ -150,28 +288,34 @@ Kết thúc feedback: Động viên sinh viên học tốt.
                 config: { temperature: 0.7 },
             });
 
-            let answer = response.text || "Bot lag sml rồi 😭";
+            const answer = response.text || "Bot lag sml rồi 😭";
             const chunks = splitMessage(answer);
             for (const chunk of chunks) {
                 await message.channel.send(chunk);
             }
         } catch (err) {
-            console.error("Gemini API Error:", err);
-            await message.channel.send("Bot lỗi khi phân tích, gọi cứu hộ 🚑");
+            console.error(err);
+            await message.channel.send("Bot lỗi khi phân tích 🚑");
         }
         return;
     }
 
-    // ==========================
-    // !ask hoặc ? hỏi AI
-    // ==========================
+    // =====================================================
+    // ✅ FIX: CHỈ CÓ "?" → TRẢ LỜI NHƯ BẠN THÂN
+    // =====================================================
+
+
+    // =====================================================
+    // ✅ !ask hoặc có dấu ?
+    // =====================================================
     if (!content.startsWith("!ask") && !content.endsWith("?")) return;
 
     const prompt = content.startsWith("!ask") ?
         content.replace("!ask", "").trim() :
         content;
 
-    if (!conversations[message.channel.id]) conversations[message.channel.id] = [];
+    if (!conversations[message.channel.id])
+        conversations[message.channel.id] = [];
 
     conversations[message.channel.id].push({ role: "user", content: prompt });
     if (conversations[message.channel.id].length > 10)
@@ -181,7 +325,7 @@ Kết thúc feedback: Động viên sinh viên học tốt.
         /(bug|lỗi|sai|error|exception|không chạy|crash|toang|bị lỗi|fix|undefined|stack|compile)/i.test(prompt);
 
     const isProcess =
-        /(làm sao|làm thế nào|như thế nào|cách làm|quy trình|hướng dẫn|how to|cách để|làm kiểu gì|procedure)/i.test(prompt);
+        /(làm sao|làm thế nào|như thế nào|cách làm|quy trình|hướng dẫn|how to|cách để|procedure)/i.test(prompt);
 
     let tone = "";
 
@@ -226,8 +370,9 @@ Trả lời ngắn gọn, dễ hiểu, đầy đủ nội dung.
             config: { temperature: 0.75 },
         });
 
-        let answer = response.text || "Bot lag sml rồi 😭";
+        const answer = response.text || "Bot lag sml rồi 😭";
         const chunks = splitMessage(answer);
+
         for (const chunk of chunks) {
             await message.channel.send(chunk);
         }
@@ -237,8 +382,8 @@ Trả lời ngắn gọn, dễ hiểu, đầy đủ nội dung.
             conversations[message.channel.id].shift();
 
     } catch (err) {
-        console.error("Gemini API Error:", err);
-        await message.channel.send("Bot lỗi sml rồi, gọi cứu hộ đi 🚑");
+        console.error(err);
+        await message.channel.send("Bot sập mẹ rồi 🚑");
     }
 });
 
