@@ -15,7 +15,7 @@ app.get('/', (req, res) => {
     res.send('Bot Discord đang chạy ngon lành 24/7!');
 });
 
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
     console.log(`🌐 Server keep-alive đang chạy tại cổng ${port}`);
 });
 // ==========================================
