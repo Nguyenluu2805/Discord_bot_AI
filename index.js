@@ -1,9 +1,24 @@
-// index.js
 import { Client, GatewayIntentBits } from "discord.js";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
+import express from "express"; // <--- Mới thêm: Thư viện tạo web server
 
 dotenv.config();
+
+// ==========================================
+// PHẦN CẤU HÌNH KEEP-ALIVE CHO UPTIMEROBOT
+// ==========================================
+const app = express();
+const port = process.env.PORT || 3000;
+
+app.get('/', (req, res) => {
+    res.send('Bot Discord đang chạy ngon lành 24/7!');
+});
+
+app.listen(port, () => {
+    console.log(`🌐 Server keep-alive đang chạy tại cổng ${port}`);
+});
+// ==========================================
 
 const client = new Client({
     intents: [
@@ -79,10 +94,11 @@ Yêu cầu:
 `;
 
         try {
+            // SỬA: Đổi model thành gemini-1.5-pro (bản 2.5 chưa ra mắt)
             const response = await genai.models.generateContent({
-                model: "gemini-2.5-pro",
+                model: "gemini-1.5-pro",
                 contents: pointPrompt,
-                temperature: 0.7,
+                config: { temperature: 0.7 }, // Sửa cú pháp config cho đúng chuẩn SDK mới
             });
 
             let answer = response.text || "Bot lag sml rồi 😭";
@@ -129,10 +145,11 @@ Kết thúc feedback: Động viên sinh viên học tốt.
 `;
 
         try {
+            // SỬA: Đổi model thành gemini-1.5-flash
             const response = await genai.models.generateContent({
-                model: "gemini-2.5-flash",
+                model: "gemini-1.5-flash",
                 contents: feedbackPrompt,
-                temperature: 0.7,
+                config: { temperature: 0.7 },
             });
 
             let answer = response.text || "Bot lag sml rồi 😭";
@@ -205,10 +222,11 @@ Trả lời ngắn gọn, dễ hiểu, đầy đủ nội dung.
         "\nBot:";
 
     try {
+        // SỬA: Đổi model thành gemini-1.5-flash
         const response = await genai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-1.5-flash",
             contents: aiPrompt,
-            temperature: 0.75,
+            config: { temperature: 0.75 },
         });
 
         let answer = response.text || "Bot lag sml rồi 😭";
