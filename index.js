@@ -1,22 +1,22 @@
 import { Client, GatewayIntentBits } from "discord.js";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
-import express from "express"; // <--- Mới thêm: Thư viện tạo web server
+import http from "http"; // <--- 1. THÊM DÒNG NÀY
 
 dotenv.config();
 
 // ==========================================
-// PHẦN CẤU HÌNH KEEP-ALIVE CHO UPTIMEROBOT
+// UPTIME ROBOT SERVER (MỚI THÊM)
 // ==========================================
-const app = express();
-const port = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
-app.get('/', (req, res) => {
-    res.send('Bot Discord đang chạy ngon lành 24/7!');
+const server = http.createServer((req, res) => {
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    res.end("Bot is alive!");
 });
 
-app.listen(port, '0.0.0.0', () => {
-    console.log(`🌐 Server keep-alive đang chạy tại cổng ${port}`);
+server.listen(PORT, () => {
+    console.log(`🌐 Uptime Server đang chạy tại port: ${PORT}`);
 });
 // ==========================================
 
@@ -94,11 +94,10 @@ Yêu cầu:
 `;
 
         try {
-            // SỬA: Đổi model thành gemini-1.5-pro (bản 2.5 chưa ra mắt)
             const response = await genai.models.generateContent({
-                model: "gemini-1.5-pro",
+                model: "gemini-2.0-flash", // Lưu ý: Mình chỉnh về 2.0-flash cho ổn định vì 2.5 có thể chưa public rộng rãi tuỳ account
                 contents: pointPrompt,
-                config: { temperature: 0.7 }, // Sửa cú pháp config cho đúng chuẩn SDK mới
+                config: { temperature: 0.7 },
             });
 
             let answer = response.text || "Bot lag sml rồi 😭";
@@ -145,9 +144,8 @@ Kết thúc feedback: Động viên sinh viên học tốt.
 `;
 
         try {
-            // SỬA: Đổi model thành gemini-1.5-flash
             const response = await genai.models.generateContent({
-                model: "gemini-1.5-flash",
+                model: "gemini-2.0-flash",
                 contents: feedbackPrompt,
                 config: { temperature: 0.7 },
             });
@@ -222,9 +220,8 @@ Trả lời ngắn gọn, dễ hiểu, đầy đủ nội dung.
         "\nBot:";
 
     try {
-        // SỬA: Đổi model thành gemini-1.5-flash
         const response = await genai.models.generateContent({
-            model: "gemini-1.5-flash",
+            model: "gemini-2.0-flash",
             contents: aiPrompt,
             config: { temperature: 0.75 },
         });
