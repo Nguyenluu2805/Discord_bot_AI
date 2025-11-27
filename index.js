@@ -336,7 +336,7 @@ Trả lời ngắn gọn, dễ hiểu, đầy đủ nội dung.
 
     try {
         const response = await genai.models.generateContent({
-            model: "gemini-2.0-flash",
+            model: "gemini-2.0-pro",
             contents: aiPrompt,
             config: { temperature: 0.75 },
         });
